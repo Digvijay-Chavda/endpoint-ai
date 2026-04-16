@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  endpoints   Endpoint[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Endpoint {
+  id           String   @id @default(cuid())
+  path         String
+  method       String   // e.g. GET, POST, PUT, DELETE, PATCH
+  responseBody String   @db.Text
+  latencyMs    Int      @default(0)
+  errorRate    Float    @default(0) // 0 to 1 (e.g., 0.1 for 10% errors)
+  active       Boolean  @default(true)
+  
+  // Advanced Simulation Controls
+  requireAuth      Boolean @default(false)
+  customAuthHeader String? // Optional specific string, e.g. 'Bearer custom_token_123'
+  enableCors       Boolean @default(true) // Should wildcard CORS headers be sent?
+
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([projectId, method, path])
+}
