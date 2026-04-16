@@ -6,8 +6,6 @@ All notable changes to RESTless are documented here.
 
 ## [Quantum Sprint Update] — 2026-03-30
 
-**Submitted to:** [Quantum Sprint: For Social Good](https://quantum-sprint.devpost.com/)  
-**Tracks:** Best AI Innovation · Best SaaS Product
 
 This release adds new features and polish built on top of the original Global Engineering Hackathon submission.
 
