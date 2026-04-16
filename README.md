@@ -1,4 +1,4 @@
-# RESTless — AI-Powered API Mocking Platform
+# endpoint-ai — AI-Powered API Mocking Platform
 
 > **Hackathon Submissions:**
 >
@@ -7,10 +7,9 @@
 >
 > Tracks entered: **Best AI Innovation** · **Best SaaS Product**
 >
-> An AI-powered API mocking platform that lets developers instantly generate realistic mock endpoints, simulate network conditions, and prototype impactful applications — **no backend required.**
+> Next-gen mock API engine with Gemini AI generation, dynamic Faker.js templates, real-time SSE request inspection, and network latency simulation. Built with Next.js 15. 🛠️
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-restless--five.vercel.app-blue?style=for-the-badge&logo=vercel)](https://restless-five.vercel.app)
-[![GitHub](https://img.shields.io/badge/GitHub-sanjaysah101%2Frestless-181717?style=for-the-badge&logo=github)](https://github.com/sanjaysah101/restless)
 [![Global Engineering Hackathon](https://img.shields.io/badge/Submitted-Global%20Engineering%20Hackathon-orange?style=for-the-badge)](https://global-engineering-hackathon.devpost.com/)
 [![Quantum Sprint](https://img.shields.io/badge/Submitted-Quantum%20Sprint%202026-purple?style=for-the-badge)](https://quantum-sprint.devpost.com/)
 
@@ -57,7 +56,7 @@ Setting up mock APIs by hand is tedious, static, and never realistic. This slows
 
 ## ✅ The Solution
 
-**RESTless** lets you:
+**endpoint-ai** lets you:
 
 1. **Create a project** (e.g. "Disaster Relief API")
 2. **Define endpoints** with method, path, and response body
@@ -68,16 +67,16 @@ Setting up mock APIs by hand is tedious, static, and never realistic. This slows
 7. **Export a Postman Collection** for your whole project in one click _(new)_
 
 ```
-https://restless-five.vercel.app/mock/[projectId]/your/path
+https://endpoint-ai.vercel.app/mock/[projectId]/your/path
 ```
 
 ---
 
 ## 🌍 Impact & Social Good Angle
 
-RESTless directly accelerates development of apps that matter:
+**endpoint-ai** directly accelerates development of apps that matter:
 
-| Domain             | How RESTless Helps                                         |
+| Domain             | How It Helps                                               |
 | ------------------ | ---------------------------------------------------------- |
 | 🆘 Disaster Relief | Mock incident APIs for volunteer coordination apps         |
 | 🌿 Climate Tech    | Generate sensor data APIs for environmental monitoring     |
@@ -167,8 +166,8 @@ When a request hits `GET /mock/[projectId]/[path]`:
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/sanjaysah101/restless.git
-cd restless
+git clone https://github.com/Digvijay-Chavda/endpoint-ai.git
+cd endpoint-ai
 pnpm install
 
 # 2. Configure environment
@@ -204,7 +203,7 @@ Running `pnpm db:seed` creates four social-impact demo projects:
 
 ## 🌐 Deployment
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/sanjaysah101/restless)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Digvijay-Chavda/endpoint-ai)
 
 Set `DATABASE_URL` and `GEMINI_API_KEY` in your Vercel project settings, then run:
 
