@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to RESTless are documented here.
+All notable changes to Endpoint are documented here.
 
 ---
 
@@ -67,7 +67,7 @@ This release adds new features and polish built on top of the original Global En
 ## [Global Engineering Hackathon] — 2026-03-12
 
 **Submitted to:** [Global Engineering Hackathon](https://global-engineering-hackathon.devpost.com/)  
-**Original Devpost:** https://devpost.com/software/restless-z7mipc
+**Original Devpost:** https://devpost.com/software/endpoint-ai
 
 ### Initial Features (baseline)
 
@@ -79,7 +79,7 @@ This release adds new features and polish built on top of the original Global En
 - **Real-time SSE request inspector** — Live feed of every incoming mock request with method, status, latency, headers, and body
 - **Mock engine pipeline** — Catch-all route handler supporting all HTTP methods, with auth gate, CORS, latency, error injection, Faker processing, and SSE publish
 - **Social-good demo seed data** — Four projects: Disaster Relief API, Climate Monitor API, Open Health API, Food Bank Network API
-- **Vercel deployment** — Live at `restless-five.vercel.app`
+- **Vercel deployment** — Live at `endpoint-ai.vercel.app`
 
 ### Tech Stack
 

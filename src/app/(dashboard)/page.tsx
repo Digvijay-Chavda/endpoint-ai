@@ -67,39 +67,39 @@ export default function LandingPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       {/* ── Hero ─────────────────────────────────────────── */}
-      <section className="relative px-6 pt-16 pb-20 text-center overflow-hidden border-b">
+      <section className="relative px-6 pt-24 pb-20 text-center overflow-hidden border-b">
         {/* Subtle gradient orbs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute top-20 left-1/4 w-64 h-64 bg-violet-500/5 rounded-full blur-3xl" />
-          <div className="absolute top-20 right-1/4 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute inset-0 pointer-events-none animate-in fade-in duration-1000">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 rounded-full blur-3xl opacity-50 animate-pulse duration-[3000ms]" />
+          <div className="absolute top-20 left-1/4 w-80 h-80 bg-violet-500/10 rounded-full blur-[100px] animate-pulse delay-500 duration-[4000ms]" />
+          <div className="absolute top-20 right-1/4 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] animate-pulse delay-1000 duration-[5000ms]" />
         </div>
 
         <div className="relative max-w-3xl mx-auto">
           {/* Track badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-muted/60 text-xs font-medium text-muted-foreground mb-6">
             <Sparkles className="w-3 h-3 text-violet-500" />
-            Quantum Sprint Hackathon · Best AI Innovation &amp; SaaS
+            Powered by Gemini 2.5 Flash · Instant AI Mocking
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-none mb-4">
-            <span className="bg-linear-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-              RESTless
+          <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-none mb-6 animate-in slide-in-from-bottom-2 fade-in duration-500">
+            <span className="bg-linear-to-br from-foreground via-foreground/90 to-muted-foreground bg-clip-text text-transparent">
+              Endpoint
             </span>
           </h1>
-          <p className="text-xl sm:text-2xl font-semibold text-foreground/80 mb-3">
+          <p className="text-xl sm:text-2xl font-semibold text-foreground/80 mb-3 animate-in slide-in-from-bottom-3 fade-in duration-700">
             AI-Powered API Mocking Platform
           </p>
-          <p className="text-base text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
+          <p className="text-base text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed animate-in slide-in-from-bottom-4 fade-in duration-1000">
             Stop waiting for backends. Instantly generate realistic mock APIs with AI-crafted payloads,
             network simulation, and live request inspection — built for developers creating apps for{' '}
             <span className="text-foreground font-semibold">social good</span>.
           </p>
 
           {/* Social good use cases */}
-          <div className="flex flex-wrap gap-2 justify-center mb-10">
+          <div className="flex flex-wrap gap-2 justify-center mb-10 animate-in fade-in duration-1000 delay-300">
             {USE_CASES.map(({ icon: Icon, label, color }) => (
-              <span key={label} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border bg-muted/40 text-sm font-medium">
+              <span key={label} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border bg-muted/40 text-sm font-medium hover:bg-muted/80 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-300 cursor-default">
                 <Icon className={`w-3.5 h-3.5 ${color}`} />
                 {label}
               </span>
@@ -139,9 +139,9 @@ export default function LandingPage() {
           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
             Your endpoints are live instantly at
           </p>
-          <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border bg-muted/40 font-mono text-sm overflow-x-auto">
+          <div className="inline-flex items-center gap-3 px-6 py-4 rounded-xl border border-primary/20 bg-card shadow-sm font-mono text-sm overflow-x-auto ring-1 ring-black/5 dark:ring-white/5 hover:scale-105 transition-all duration-300 hover:shadow-xl hover:border-primary/40 cursor-default">
             <Globe className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span className="text-muted-foreground">https://restless-five.vercel.app</span>
+            <span className="text-muted-foreground">https://endpoint-ai.vercel.app</span>
             <span className="text-foreground font-bold">/mock/[projectId]/[your-path]</span>
           </div>
           <p className="text-sm text-muted-foreground mt-4">
@@ -159,9 +159,9 @@ export default function LandingPage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map(({ icon: Icon, title, description, color, bg }) => (
-              <div key={title} className="p-5 rounded-xl border bg-card hover:border-primary/30 hover:shadow-sm transition-all group">
-                <div className={`inline-flex p-2 rounded-lg ${bg} mb-3`}>
-                  <Icon className={`w-5 h-5 ${color}`} />
+              <div key={title} className="p-5 rounded-xl border bg-card hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-default">
+                <div className={`inline-flex p-2 rounded-lg ${bg} mb-3 group-hover:scale-110 transition-transform duration-300`}>
+                  <Icon className={`w-5 h-5 ${color} group-hover:animate-pulse`} />
                 </div>
                 <h3 className="font-semibold text-sm mb-1.5">{title}</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
@@ -188,8 +188,8 @@ export default function LandingPage() {
               { step: '06', title: 'Faker Processing', desc: 'Interpolates {{faker.*}} template tokens with fresh values' },
               { step: '07', title: 'Inspector + Response', desc: 'Emits to real-time SSE bus, then returns the JSON payload' },
             ].map(({ step, title, desc }) => (
-              <div key={step} className="flex items-start gap-4 p-4 rounded-lg bg-card border">
-                <span className="text-xs font-black text-muted-foreground/50 font-mono pt-0.5 shrink-0 w-6">{step}</span>
+              <div key={step} className="flex items-start gap-4 p-4 rounded-lg bg-card border hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 group">
+                <span className="text-xs font-black text-muted-foreground/50 font-mono pt-0.5 shrink-0 w-6 group-hover:text-primary transition-colors">{step}</span>
                 <div>
                   <span className="font-semibold text-sm">{title}</span>
                   <span className="text-muted-foreground text-sm"> — {desc}</span>

@@ -126,4 +126,23 @@
   html {
     @apply font-sans;
   }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/30 rounded-md;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/40 rounded-full border-[2px] border-solid border-transparent bg-clip-padding;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/60;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) rgba(0,0,0,0);
+  }
 }

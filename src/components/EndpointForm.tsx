@@ -24,7 +24,7 @@ export default function EndpointForm({
 }) {
   const [path, setPath] = useState('/api/test');
   const [method, setMethod] = useState<HttpMethod>('GET');
-  const [responseBody, setResponseBody] = useState('{\n  "status": "success",\n  "message": "Hello from RESTless!"\n}');
+  const [responseBody, setResponseBody] = useState('{\n  "status": "success",\n  "message": "Hello from Endpoint!"\n}');
   const [latencyMs, setLatencyMs] = useState(0);
   const [errorRate, setErrorRate] = useState(0);
   const [requireAuth, setRequireAuth] = useState(false);
@@ -47,7 +47,7 @@ export default function EndpointForm({
     } else {
       setPath('/api/test');
       setMethod('GET');
-      setResponseBody('{\n  "status": "success",\n  "message": "Hello from RESTless!"\n}');
+      setResponseBody('{\n  "status": "success",\n  "message": "Hello from Endpoint!"\n}');
       setLatencyMs(0);
       setErrorRate(0);
       setRequireAuth(false);
@@ -92,7 +92,7 @@ export default function EndpointForm({
       }
 
       setPath('/api/test');
-      setResponseBody('{\n  "status": "success",\n  "message": "Hello from RESTless!"\n}');
+      setResponseBody('{\n  "status": "success",\n  "message": "Hello from Endpoint!"\n}');
       setLatencyMs(0);
       setErrorRate(0);
       setRequireAuth(false);
@@ -107,10 +107,18 @@ export default function EndpointForm({
     }
   };
 
+  const methodColors: Record<string, string> = {
+    GET: 'text-emerald-500 dark:text-emerald-400 font-semibold',
+    POST: 'text-blue-500 dark:text-blue-400 font-semibold',
+    PUT: 'text-amber-500 dark:text-amber-400 font-semibold',
+    PATCH: 'text-amber-500 dark:text-amber-400 font-semibold',
+    DELETE: 'text-rose-500 dark:text-rose-400 font-semibold',
+  };
+
   return (
-    <form id="endpointForm" onSubmit={handleSubmit} className="flex flex-col gap-4 py-4">
+    <form id="endpointForm" onSubmit={handleSubmit} className="flex flex-col gap-6 py-4 animate-in fade-in duration-500 slide-in-from-bottom-4">
       {errorMsg && (
-        <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded-md text-sm">
+        <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded-md text-sm animate-in fade-in zoom-in-95 duration-300">
           <AlertCircle className="w-4 h-4" />
           {errorMsg}
         </div>
@@ -118,33 +126,33 @@ export default function EndpointForm({
 
       <div className="flex gap-4">
         <div className="w-1/3 space-y-2">
-          <Label>Method</Label>
+          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Method</Label>
           <Select value={method} onValueChange={(v) => { if (v) setMethod(v as HttpMethod) }}>
-            <SelectTrigger>
+            <SelectTrigger className={`font-mono ${methodColors[method]}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
+                <SelectItem key={m} value={m} className={`font-mono ${methodColors[m]}`}>{m}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
         <div className="flex-1 space-y-2">
-          <Label>Path</Label>
+          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Path</Label>
           <Input
             value={path}
             onChange={e => setPath(e.target.value)}
             placeholder="/api/users"
-            className="font-mono text-sm"
+            className="font-mono text-sm bg-card"
           />
         </div>
       </div>
 
       {/* AI Context Window button */}
-      <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-3">
-        <Sparkles className="w-4 h-4 text-primary shrink-0" />
+      <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 group">
+        <Sparkles className="w-4 h-4 text-primary shrink-0 group-hover:animate-pulse" />
         <div className="flex-1">
           <p className="text-sm font-medium text-primary leading-tight">Generate with AI</p>
           <p className="text-[11px] text-muted-foreground">Let Gemini write the JSON payload for you</p>
@@ -160,12 +168,12 @@ export default function EndpointForm({
         </Button>
       </div>
 
-      <div className="space-y-2">
-        <Label>JSON Response Body</Label>
+      <div className="space-y-2 group">
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider transition-colors group-focus-within:text-foreground">JSON Response Body</Label>
         <Textarea
           value={responseBody}
           onChange={e => setResponseBody(e.target.value)}
-          className="font-mono text-xs min-h-[200px] resize-y"
+          className="font-mono text-sm min-h-[200px] resize-y bg-card border-muted-foreground/20 leading-relaxed shadow-inner transition-colors focus-visible:border-primary/50"
           placeholder="{}"
         />
         <p className="text-[11px] text-muted-foreground font-mono">
@@ -173,10 +181,10 @@ export default function EndpointForm({
         </p>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 p-4 rounded-xl border bg-muted/20">
         <div className="flex-1 space-y-2">
-          <Label className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-muted-foreground" />
+          <Label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <Clock className="w-3.5 h-3.5" />
             Latency (ms)
           </Label>
           <Input
@@ -185,12 +193,13 @@ export default function EndpointForm({
             max="10000"
             value={latencyMs}
             onChange={e => setLatencyMs(Number(e.target.value))}
+            className="font-mono text-sm bg-card"
           />
         </div>
 
         <div className="flex-1 space-y-2">
-          <Label className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-muted-foreground" />
+          <Label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <AlertCircle className="w-3.5 h-3.5" />
             Error Rate (%)
           </Label>
           <Input
@@ -199,12 +208,13 @@ export default function EndpointForm({
             max="100"
             value={errorRate}
             onChange={e => setErrorRate(Number(e.target.value))}
+            className="font-mono text-sm bg-card"
           />
         </div>
       </div>
 
-      <div className="border-t pt-4 space-y-4">
-        <h4 className="text-sm font-semibold flex items-center gap-2">Advanced Simulation</h4>
+      <div className="border-t pt-6 space-y-5">
+        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">Advanced Simulation</h4>
 
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">

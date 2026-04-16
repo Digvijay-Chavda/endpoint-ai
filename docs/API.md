@@ -1,4 +1,4 @@
-# RESTless — API Reference
+# Endpoint — API Reference
 
 Base URL (development): `http://localhost:3000`  
 Base URL (production): `https://your-deployment.com`
