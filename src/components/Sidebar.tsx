@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { appEvents } from '@/lib/events';
-import { Zap, Folder, LayoutDashboard } from "lucide-react";
+import { Zap, Folder, LayoutDashboard, Trash2 } from "lucide-react";
 import { Project } from '@/types';
+import { DeleteProjectDialog } from '@/components/DeleteProjectDialog';
 import {
   Sidebar,
   SidebarContent,
@@ -14,6 +15,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -21,6 +23,7 @@ import {
 
 export function AppSidebar() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -40,11 +43,17 @@ export function AppSidebar() {
     fetchProjects();
     
     // Subscribe to global project created events
-    const unsubscribe = appEvents.subscribe('projectCreated', () => {
+    const unsubscribeCreated = appEvents.subscribe('projectCreated', () => {
       fetchProjects();
     });
-    
-    return () => unsubscribe();
+    const unsubscribeDeleted = appEvents.subscribe('projectDeleted', () => {
+      fetchProjects();
+    });
+
+    return () => {
+      unsubscribeCreated();
+      unsubscribeDeleted();
+    };
   }, []);
 
 
@@ -83,6 +92,14 @@ export function AppSidebar() {
                       <LayoutDashboard className="w-4 h-4" />
                       <span className="truncate">{proj.name}</span>
                     </SidebarMenuButton>
+                    <SidebarMenuAction
+                      showOnHover
+                      title="Delete project"
+                      aria-label={`Delete project ${proj.name}`}
+                      onClick={() => setProjectToDelete(proj)}
+                    >
+                      <Trash2 />
+                    </SidebarMenuAction>
                   </SidebarMenuItem>
                 );
               })}
@@ -97,6 +114,11 @@ export function AppSidebar() {
       </SidebarContent>
 
 
+
+      <DeleteProjectDialog
+        project={projectToDelete}
+        onOpenChange={(open) => { if (!open) setProjectToDelete(null); }}
+      />
 
       <SidebarRail />
     </Sidebar>

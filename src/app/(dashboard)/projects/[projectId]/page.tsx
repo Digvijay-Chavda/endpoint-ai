@@ -5,10 +5,11 @@ import { Project, Endpoint } from '@/types';
 import EndpointList from '@/components/EndpointList';
 import EndpointForm from '@/components/EndpointForm';
 import { RequestInspector } from '@/components/RequestInspector';
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { DeleteProjectDialog } from '@/components/DeleteProjectDialog';
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Folder, Plus, Activity, Layers } from "lucide-react";
+import { Folder, Plus, Activity, Layers, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null);
   const [activeTab, setActiveTab] = useState<'endpoints' | 'inspector'>('endpoints');
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const fetchProjectDetails = async () => {
     try {
@@ -151,9 +153,25 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                 </DialogContent>
               </Dialog>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              title="Delete project"
+              aria-label="Delete project"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </header>
+
+      <DeleteProjectDialog
+        project={deleteOpen ? { id: project.id, name: project.name } : null}
+        onOpenChange={setDeleteOpen}
+      />
 
       {/* Tab Content */}
       <div className="flex-1 overflow-auto h-full">
