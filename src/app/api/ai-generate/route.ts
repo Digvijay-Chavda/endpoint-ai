@@ -13,13 +13,17 @@ Never truncate — always provide the full requested quantity.`;
 
 const API_KEY_HEADER = 'x-gemini-api-key';
 
+// Google retires Gemini models over time, so the model can be changed without a code change.
+const DEFAULT_MODEL = 'gemini-3.8-flash';
+const getModelName = () => process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+
 function isUsableKey(key: string | undefined): key is string {
   return !!key && key !== 'your_gemini_api_key_here';
 }
 
 async function generateWithGemini(prompt: string, apiKey: string): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: getModelName() });
   const result = await model.generateContent([
     { text: SYSTEM_INSTRUCTION },
     { text: `Generate a mock API JSON response for: ${prompt}` },
