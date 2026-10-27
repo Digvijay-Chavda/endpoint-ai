@@ -8,10 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed.ts"
-  },
-  "prisma": {
-    "seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed.ts"
+    "db:delete-projects": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/delete-projects.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
@@ -22,6 +19,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
+    "next-auth": "5.0.0-beta.32",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "shadcn": "^4.0.5",

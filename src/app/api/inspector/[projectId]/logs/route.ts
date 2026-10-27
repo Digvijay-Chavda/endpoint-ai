@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { findAccessibleProject, notFound } from '@/lib/owner';
+import { findAccessibleProject, getOwnerId, notFound, unauthorized } from '@/lib/owner';
 import { toLogEntry } from '@/lib/request-log';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,9 @@ type Ctx = { params: Promise<{ projectId: string }> };
 export async function GET(_req: Request, { params }: Ctx) {
   try {
     const { projectId } = await params;
-    if (!(await findAccessibleProject(projectId))) return notFound();
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    if (!(await findAccessibleProject(projectId, ownerId))) return notFound();
 
     const rows = await prisma.requestLog.findMany({
       where: { projectId },
@@ -29,7 +31,9 @@ export async function GET(_req: Request, { params }: Ctx) {
 export async function DELETE(_req: Request, { params }: Ctx) {
   try {
     const { projectId } = await params;
-    if (!(await findAccessibleProject(projectId))) return notFound();
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    if (!(await findAccessibleProject(projectId, ownerId))) return notFound();
 
     await prisma.requestLog.deleteMany({ where: { projectId } });
     return new NextResponse(null, { status: 204 });

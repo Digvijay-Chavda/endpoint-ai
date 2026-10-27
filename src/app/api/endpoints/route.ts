@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { findAccessibleProject, notFound } from '@/lib/owner';
+import { findAccessibleProject, getOwnerId, notFound, unauthorized } from '@/lib/owner';
 import { parseEndpointInput } from '@/lib/endpoint-input';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,9 @@ export async function GET(request: Request) {
     if (!projectId) {
       return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
     }
-    if (!(await findAccessibleProject(projectId))) return notFound();
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    if (!(await findAccessibleProject(projectId, ownerId))) return notFound();
 
     const endpoints = await prisma.endpoint.findMany({
       where: { projectId },
@@ -34,7 +36,9 @@ export async function POST(request: Request) {
     if (!body?.projectId || typeof body.projectId !== 'string') {
       return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
     }
-    if (!(await findAccessibleProject(body.projectId))) return notFound();
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    if (!(await findAccessibleProject(body.projectId, ownerId))) return notFound();
 
     const parsed = parseEndpointInput(body, false);
     if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });

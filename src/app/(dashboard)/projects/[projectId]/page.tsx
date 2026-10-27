@@ -37,6 +37,10 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   const fetchProjectDetails = async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}`);
+      if (res.status === 401) {
+        window.location.assign('/login'); // session expired
+        return;
+      }
       if (res.status === 404) {
         setNotFound(true);
       } else if (res.ok) {
@@ -99,7 +103,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
         <FolderX className="w-12 h-12 text-muted-foreground opacity-50" />
         <h2 className="text-lg font-semibold">Project not found</h2>
         <p className="text-sm text-muted-foreground max-w-sm">
-          It may have been deleted, or it belongs to a different browser session.
+          It may have been deleted, or it belongs to a different account.
         </p>
         <Link href="/" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Back to home</Link>
       </div>

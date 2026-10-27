@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { findAccessibleProject, notFound } from '@/lib/owner';
+import { findAccessibleProject, getOwnerId, notFound, unauthorized } from '@/lib/owner';
 import { toLogEntry } from '@/lib/request-log';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,9 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
-  if (!(await findAccessibleProject(projectId))) return notFound();
+  const ownerId = await getOwnerId();
+  if (!ownerId) return unauthorized();
+  if (!(await findAccessibleProject(projectId, ownerId))) return notFound();
 
   const url = new URL(req.url);
   const resumeFrom = req.headers.get('last-event-id') || url.searchParams.get('since');

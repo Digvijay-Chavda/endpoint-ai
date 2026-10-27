@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { accessibleToOwner, findAccessibleProject, getOwnerId, notFound, publicProject } from '@/lib/owner';
+import { accessibleToOwner, findAccessibleProject, getOwnerId, notFound, publicProject, unauthorized } from '@/lib/owner';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,9 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, { params }: Ctx) {
   try {
     const { id } = await params;
-    const project = await findAccessibleProject(id);
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    const project = await findAccessibleProject(id, ownerId);
     if (!project) return notFound();
     return NextResponse.json(publicProject(project));
   } catch (error) {
@@ -25,7 +27,9 @@ export async function GET(_request: Request, { params }: Ctx) {
 export async function PATCH(request: Request, { params }: Ctx) {
   try {
     const { id } = await params;
-    const project = await findAccessibleProject(id);
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    const project = await findAccessibleProject(id, ownerId);
     if (!project) return notFound();
 
     const body = await request.json().catch(() => null);
@@ -37,7 +41,6 @@ export async function PATCH(request: Request, { params }: Ctx) {
       if (name.length > NAME_MAX) {
         return NextResponse.json({ error: `Project name must be ${NAME_MAX} characters or fewer` }, { status: 400 });
       }
-      const ownerId = await getOwnerId();
       const duplicate = await prisma.project.findFirst({
         where: { ...accessibleToOwner(ownerId), id: { not: id }, name: { equals: name, mode: 'insensitive' } },
         select: { id: true },
@@ -66,7 +69,9 @@ export async function PATCH(request: Request, { params }: Ctx) {
 export async function DELETE(_request: Request, { params }: Ctx) {
   try {
     const { id } = await params;
-    const project = await findAccessibleProject(id);
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    const project = await findAccessibleProject(id, ownerId);
     if (!project) return notFound();
 
     await prisma.project.delete({ where: { id } });

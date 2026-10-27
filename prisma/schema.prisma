@@ -7,12 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// A signed-in person. `id` is the Google account's stable subject id.
+model User {
+  id        String    @id
+  email     String?
+  name      String?
+  image     String?
+  projects  Project[]
+  createdAt DateTime  @default(now())
+}
+
 model Project {
   id          String     @id @default(cuid())
   name        String
   description String?
-  // Anonymous browser owner (cookie id). Null = legacy project created before ownership existed.
+  // Signed-in owner. Null = legacy project from before accounts existed; never visible to anyone.
   ownerId     String?
+  owner       User?      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   endpoints   Endpoint[]
   logs        RequestLog[]
   createdAt   DateTime   @default(now())
