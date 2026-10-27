@@ -241,7 +241,7 @@ Clears the project's stored request history. **Response `204`.**
 
 ### `POST /api/ai-generate`
 
-Generate a realistic JSON payload from a natural language prompt using Google Gemini 2.5 Flash.
+Generate a realistic JSON payload from a natural language prompt using Google Gemini (model `gemini-3.8-flash` by default; override with the `GEMINI_MODEL` environment variable).
 
 **Responses are cached by Next.js `unstable_cache` for 1 hour** — repeated prompts are instant.
 

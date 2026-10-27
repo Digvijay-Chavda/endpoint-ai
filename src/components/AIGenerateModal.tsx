@@ -201,7 +201,7 @@ export function AIGenerateModal({ open, onClose, onApply }: AIGenerateModalProps
           </div>
           <div>
             <h2 className="font-bold text-base leading-tight">AI Payload Generator</h2>
-            <p className="text-xs text-muted-foreground">Powered by Gemini 2.5 Flash · responses are cached</p>
+            <p className="text-xs text-muted-foreground">Powered by Google Gemini · responses are cached</p>
           </div>
           <button
             onClick={() => setShowKeyPanel(v => !v)}

@@ -12,7 +12,7 @@ Setting up mock APIs by hand is tedious, static, and never realistic. This slows
 
 1. **Create a project** (e.g. "Disaster Relief API")
 2. **Define endpoints** with method, path, and response body
-3. **Generate realistic JSON payloads with AI** — describe it in plain English, Gemini 2.5 Flash generates it
+3. **Generate realistic JSON payloads with AI** — describe it in plain English, Google Gemini generates it
 4. **Improve existing payloads with AI** — paste your current JSON and ask Gemini to refine it _(new)_
 5. **Simulate real network conditions** — latency, error rates, auth, CORS
 6. **Hit the live URL immediately** — no deployment, no server
@@ -45,7 +45,7 @@ Every new account starts with one ready-made sample API (users, auth, latency an
 | ----------------------------- | ----------------------------------------------------------------------------- |
 | **Project Organisation**      | Group endpoints into projects, each with a scoped base URL                    |
 | **Full CRUD Endpoints**       | Create, edit, and delete endpoints by method + path                           |
-| **AI Payload Generation**     | Describe a response in plain English; Gemini 2.5 Flash generates it instantly |
+| **AI Payload Generation**     | Describe a response in plain English; Google Gemini generates it instantly |
 | **AI Response Refinement** ⭐ | Paste existing JSON and let Gemini improve it with a follow-up prompt         |
 | **Faker.js Templates**        | Use `{{faker.person.fullName()}}` syntax for fresh data on every request      |
 | **Network Simulation**        | Per-endpoint latency (ms), error rate (%), auth enforcement, and CORS toggle  |
@@ -92,7 +92,7 @@ When a request hits `GET /mock/[projectId]/[path]`:
 | Language     | TypeScript                                   |
 | Database     | PostgreSQL + Prisma ORM                      |
 | UI           | shadcn/ui + Tailwind CSS v4                  |
-| AI           | Google Gemini 2.5 Flash                      |
+| AI           | Google Gemini                                |
 | Dynamic Data | Faker.js                                     |
 | Real-time    | Server-Sent Events (native `ReadableStream`) |
 | Deployment   | Vercel                                       |

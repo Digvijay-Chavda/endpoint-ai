@@ -8,7 +8,7 @@ const FEATURES = [
   {
     icon: Sparkles,
     title: 'AI Payload Generation',
-    description: 'Describe any API response in plain English — Gemini 2.5 Flash generates realistic JSON instantly.',
+    description: 'Describe any API response in plain English — Google Gemini generates realistic JSON instantly.',
     color: 'text-violet-500',
     bg: 'bg-violet-500/10',
   },
@@ -80,7 +80,7 @@ export default function LandingPage() {
           {/* Track badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-muted/60 text-xs font-medium text-muted-foreground mb-6">
             <Sparkles className="w-3 h-3 text-violet-500" />
-            Powered by Gemini 2.5 Flash · Instant AI Mocking
+            Powered by Google Gemini · Instant AI Mocking
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-none mb-6 animate-in slide-in-from-bottom-2 fade-in duration-500">
@@ -209,7 +209,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap gap-2 justify-center">
             {[
               'Next.js 16', 'TypeScript', 'PostgreSQL', 'Prisma ORM',
-              'Google Gemini 2.5 Flash', 'Faker.js', 'shadcn/ui',
+              'Google Gemini', 'Faker.js', 'shadcn/ui',
               'Tailwind CSS v4', 'Server-Sent Events',
             ].map(tech => (
               <span key={tech} className="px-3 py-1.5 rounded-full border bg-muted/40 text-xs font-medium">
