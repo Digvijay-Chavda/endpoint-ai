@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Wand2, X, ArrowRight, Copy, Check, RotateCcw, Zap } from 'lucide-react';
+import { Sparkles, Wand2, X, ArrowRight, Copy, Check, RotateCcw, Zap, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+
+const KEY_STORAGE = 'endpoint-ai:gemini-api-key';
 
 const EXAMPLES = [
   {
@@ -75,12 +77,60 @@ export function AIGenerateModal({ open, onClose, onApply }: AIGenerateModalProps
   const [copied, setCopied] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [keyDraft, setKeyDraft] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [showKeyPanel, setShowKeyPanel] = useState(false);
+  const [serverKeyConfigured, setServerKeyConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    try {
+      const saved = localStorage.getItem(KEY_STORAGE) ?? '';
+      setApiKey(saved);
+      setKeyDraft(saved);
+    } catch {
+      // localStorage unavailable (private mode etc.) — key just won't persist
+    }
+    fetch('/api/ai-generate')
+      .then(res => res.json())
+      .then(data => setServerKeyConfigured(!!data.serverKeyConfigured))
+      .catch(() => setServerKeyConfigured(false));
+  }, [open]);
+
+  const needsKey = !apiKey && serverKeyConfigured === false;
+
+  useEffect(() => {
+    if (open && needsKey) setShowKeyPanel(true);
+  }, [open, needsKey]);
+
+  useEffect(() => {
+    if (open && !showKeyPanel) {
       setTimeout(() => textareaRef.current?.focus(), 100);
     }
-  }, [open]);
+  }, [open, showKeyPanel]);
+
+  const saveKey = () => {
+    const trimmed = keyDraft.trim();
+    setApiKey(trimmed);
+    try {
+      if (trimmed) localStorage.setItem(KEY_STORAGE, trimmed);
+      else localStorage.removeItem(KEY_STORAGE);
+    } catch {
+      // ignore storage errors
+    }
+    if (trimmed) setShowKeyPanel(false);
+  };
+
+  const removeKey = () => {
+    setApiKey('');
+    setKeyDraft('');
+    try {
+      localStorage.removeItem(KEY_STORAGE);
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -96,11 +146,17 @@ export function AIGenerateModal({ open, onClose, onApply }: AIGenerateModalProps
     try {
       const res = await fetch('/api/ai-generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey ? { 'x-gemini-api-key': apiKey } : {}),
+        },
         body: JSON.stringify({ prompt }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'AI generation failed');
+      if (!res.ok) {
+        if (data.code === 'NO_API_KEY' || data.code === 'INVALID_API_KEY') setShowKeyPanel(true);
+        throw new Error(data.error || 'AI generation failed');
+      }
 
       const pretty = JSON.stringify(JSON.parse(data.result), null, 2);
       setMessages(prev => [...prev, { role: 'assistant', content: pretty }]);
@@ -145,12 +201,64 @@ export function AIGenerateModal({ open, onClose, onApply }: AIGenerateModalProps
           </div>
           <div>
             <h2 className="font-bold text-base leading-tight">AI Payload Generator</h2>
-            <p className="text-xs text-muted-foreground">Powered by Gemini 2.0 Flash · responses are cached</p>
+            <p className="text-xs text-muted-foreground">Powered by Gemini 2.5 Flash · responses are cached</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-md hover:bg-muted transition-colors">
+          <button
+            onClick={() => setShowKeyPanel(v => !v)}
+            title="Gemini API key"
+            aria-label="Gemini API key settings"
+            className="ml-auto relative p-1.5 rounded-md hover:bg-muted transition-colors"
+          >
+            <KeyRound className="w-4 h-4" />
+            {apiKey && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-500" />}
+          </button>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-muted transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* API key settings */}
+        {showKeyPanel && (
+          <div className="shrink-0 px-5 py-4 border-b bg-muted/30 space-y-2">
+            <label htmlFor="gemini-key" className="text-sm font-medium">Gemini API key</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  id="gemini-key"
+                  type={showKey ? 'text' : 'password'}
+                  value={keyDraft}
+                  onChange={e => setKeyDraft(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') saveKey();
+                  }}
+                  placeholder="AIza..."
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="w-full h-9 rounded-md border bg-background px-3 pr-9 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(v => !v)}
+                  aria-label={showKey ? 'Hide key' : 'Show key'}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Button size="sm" className="h-9" onClick={saveKey} disabled={!keyDraft.trim()}>Save</Button>
+              {apiKey && (
+                <Button size="sm" variant="outline" className="h-9" onClick={removeKey}>Remove</Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Get a free key at{' '}
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="underline hover:text-foreground">
+                Google AI Studio
+              </a>
+              . It is stored only in this browser and sent with your requests{serverKeyConfigured ? '; if empty, the server key is used' : ''}.
+            </p>
+          </div>
+        )}
 
         {/* Scroll area */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
