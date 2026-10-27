@@ -11,6 +11,9 @@ If the user asks for a list, return a JSON array. If they ask for a single objec
 Use realistic values: real-sounding names, plausible prices, real URL structures, proper UUIDs where appropriate.
 Never truncate — always provide the full requested quantity.`;
 
+// Retries add a few seconds on top of generation time
+export const maxDuration = 60;
+
 const API_KEY_HEADER = 'x-gemini-api-key';
 
 // Google retires Gemini models over time, so the model can be changed without a code change.
@@ -21,13 +24,32 @@ function isUsableKey(key: string | undefined): key is string {
   return !!key && key !== 'your_gemini_api_key_here';
 }
 
+// Google answers 503 (overloaded) and 429 (rate limited) for temporary conditions
+function isBusyError(message: string) {
+  return /\[(503|429) |high demand|overloaded|RESOURCE_EXHAUSTED/i.test(message);
+}
+
+const RETRY_DELAYS_MS = [1000, 2500];
+
 async function generateWithGemini(prompt: string, apiKey: string): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: getModelName() });
-  const result = await model.generateContent([
+  const input = [
     { text: SYSTEM_INSTRUCTION },
     { text: `Generate a mock API JSON response for: ${prompt}` },
-  ]);
+  ];
+
+  let result;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      result = await model.generateContent(input);
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (!isBusyError(message) || attempt >= RETRY_DELAYS_MS.length) throw error;
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  }
   const rawText = result.response.text().trim();
   return rawText
     .replace(/^```json\s*/i, '')
@@ -90,6 +112,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Your Gemini API key is not valid. Check it and try again.', code: 'INVALID_API_KEY' },
         { status: 401 }
+      );
+    }
+    if (isBusyError(errorMessage)) {
+      return NextResponse.json(
+        { error: 'Gemini is busy right now. Please try again in a moment.', code: 'MODEL_BUSY' },
+        { status: 503 }
       );
     }
     console.error('[AI Generate] Error:', errorMessage);
