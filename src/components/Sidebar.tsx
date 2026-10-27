@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { appEvents } from '@/lib/events';
-import { Zap, Folder, LayoutDashboard, Trash2 } from "lucide-react";
+import { Zap, Folder, LayoutDashboard, Trash2, Search, FileUp } from "lucide-react";
 import { Project } from '@/types';
 import { DeleteProjectDialog } from '@/components/DeleteProjectDialog';
+import { ImportProjectDialog } from '@/components/ImportProjectDialog';
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +25,8 @@ import {
 export function AppSidebar() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const pathname = usePathname();
   const router = useRouter();
 
@@ -39,6 +42,8 @@ export function AppSidebar() {
     }
   };
 
+  const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(query.trim().toLowerCase()));
+
   useEffect(() => {
     fetchProjects();
     
@@ -49,10 +54,14 @@ export function AppSidebar() {
     const unsubscribeDeleted = appEvents.subscribe('projectDeleted', () => {
       fetchProjects();
     });
+    const unsubscribeUpdated = appEvents.subscribe('projectUpdated', () => {
+      fetchProjects();
+    });
 
     return () => {
       unsubscribeCreated();
       unsubscribeDeleted();
+      unsubscribeUpdated();
     };
   }, []);
 
@@ -83,8 +92,29 @@ export function AppSidebar() {
             <Folder className="w-3.5 h-3.5" /> Your Projects
           </SidebarGroupLabel>
           <SidebarGroupContent>
+            <div className="flex items-center gap-1.5 px-2 pb-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Search projects"
+                  aria-label="Search projects"
+                  className="w-full h-8 rounded-md border bg-background pl-7 pr-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <button
+                onClick={() => setImportOpen(true)}
+                title="Import project (Endpoint, OpenAPI, Postman)"
+                aria-label="Import project"
+                className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md border hover:bg-muted transition-colors"
+              >
+                <FileUp className="w-4 h-4" />
+              </button>
+            </div>
             <SidebarMenu>
-              {projects.map((proj) => {
+              {filteredProjects.map((proj) => {
                 const isActive = pathname.startsWith(`/projects/${proj.id}`);
                 return (
                   <SidebarMenuItem key={proj.id}>
@@ -105,8 +135,11 @@ export function AppSidebar() {
               })}
               {projects.length === 0 && (
                 <p className="text-sm text-muted-foreground px-2 py-4">
-                  No projects yet. Create one below.
+                  No projects yet. Create one on the home page or import one.
                 </p>
+              )}
+              {projects.length > 0 && filteredProjects.length === 0 && (
+                <p className="text-sm text-muted-foreground px-2 py-4">No projects match “{query}”.</p>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -115,6 +148,7 @@ export function AppSidebar() {
 
 
 
+      <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} />
       <DeleteProjectDialog
         project={projectToDelete}
         onOpenChange={(open) => { if (!open) setProjectToDelete(null); }}

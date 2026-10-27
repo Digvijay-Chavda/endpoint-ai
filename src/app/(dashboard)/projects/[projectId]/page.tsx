@@ -7,9 +7,11 @@ import EndpointForm from '@/components/EndpointForm';
 import { RequestInspector } from '@/components/RequestInspector';
 import { Button, buttonVariants } from "@/components/ui/button";
 import { DeleteProjectDialog } from '@/components/DeleteProjectDialog';
+import { EditProjectDialog } from '@/components/EditProjectDialog';
+import Link from 'next/link';
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Folder, Plus, Activity, Layers, Trash2 } from "lucide-react";
+import { Folder, Plus, Activity, Layers, Trash2, Pencil, Download, Search, FolderX } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,14 +30,18 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null);
   const [activeTab, setActiveTab] = useState<'endpoints' | 'inspector'>('endpoints');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [search, setSearch] = useState('');
 
   const fetchProjectDetails = async () => {
     try {
-      const allRes = await fetch('/api/projects');
-      if (allRes.ok) {
-        const allProj: Project[] = await allRes.json();
-        const found = allProj.find(p => p.id === projectId);
-        if (found) setProject(found);
+      const res = await fetch(`/api/projects/${projectId}`);
+      if (res.status === 404) {
+        setNotFound(true);
+      } else if (res.ok) {
+        setNotFound(false);
+        setProject(await res.json());
       }
     } catch (e) {
       console.error(e);
@@ -59,10 +65,18 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   };
 
   useEffect(() => {
+    setProject(null);
+    setNotFound(false);
+    setSearch('');
     fetchProjectDetails();
     fetchEndpoints();
     setEditingEndpoint(null);
   }, [projectId]);
+
+  const visibleEndpoints = endpoints.filter(ep => {
+    const q = search.trim().toLowerCase();
+    return !q || ep.path.toLowerCase().includes(q) || ep.method.toLowerCase().includes(q);
+  });
 
   const handleEditClick = (ep: Endpoint) => {
     setEditingEndpoint(ep);
@@ -78,6 +92,19 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
     setIsDialogOpen(false);
     fetchEndpoints();
   };
+
+  if (notFound) {
+    return (
+      <div className="flex-1 flex flex-col justify-center items-center h-full gap-3 text-center p-6">
+        <FolderX className="w-12 h-12 text-muted-foreground opacity-50" />
+        <h2 className="text-lg font-semibold">Project not found</h2>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          It may have been deleted, or it belongs to a different browser session.
+        </p>
+        <Link href="/" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Back to home</Link>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -107,6 +134,9 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                 /mock/{project.id}
               </Badge>
             </div>
+            {project.description && (
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">{project.description}</p>
+            )}
           </div>
 
           {/* Right controls */}
@@ -157,6 +187,24 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
             <Button
               variant="outline"
               size="sm"
+              title="Edit project"
+              aria-label="Edit project"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <a
+              href={`/api/projects/${project.id}/export`}
+              download
+              title="Export project as JSON"
+              aria-label="Export project"
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              <Download className="w-4 h-4" />
+            </a>
+            <Button
+              variant="outline"
+              size="sm"
               title="Delete project"
               aria-label="Delete project"
               className="text-destructive hover:text-destructive"
@@ -168,6 +216,12 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
         </div>
       </header>
 
+      <EditProjectDialog
+        project={project}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={setProject}
+      />
       <DeleteProjectDialog
         project={deleteOpen ? { id: project.id, name: project.name } : null}
         onOpenChange={setDeleteOpen}
@@ -183,12 +237,32 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                   <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
                 </div>
               ) : (
-                <EndpointList
-                  projectId={project.id}
-                  endpoints={endpoints}
-                  onRefresh={fetchEndpoints}
-                  onEdit={handleEditClick}
-                />
+                <>
+                  {endpoints.length > 0 && (
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="search"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search endpoints by path or method"
+                        aria-label="Search endpoints"
+                        className="w-full h-9 rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+                  )}
+                  {endpoints.length > 0 && visibleEndpoints.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-8">No endpoints match “{search}”.</p>
+                  )}
+                {(endpoints.length === 0 || visibleEndpoints.length > 0) && (
+                  <EndpointList
+                    projectId={project.id}
+                    endpoints={visibleEndpoints}
+                    onRefresh={fetchEndpoints}
+                    onEdit={handleEditClick}
+                  />
+                )}
+                </>
               )}
             </div>
           </div>

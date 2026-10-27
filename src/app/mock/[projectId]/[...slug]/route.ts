@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { HttpMethod } from '@/types';
 import { faker } from '@faker-js/faker';
-import { publish, InspectorLogEntry } from '@/lib/inspector-bus';
-import { randomUUID } from 'crypto';
+import { parseStoredHeaders } from '@/lib/endpoint-input';
 
 // A helper to parse {{faker.module.method()}} templates
 function interpolateFakerTemplates(rawString: string): string {
@@ -36,6 +35,26 @@ function corsHeaders(enableCors: boolean): Record<string, string> {
   };
 }
 
+// Statuses that must not carry a body
+const NO_BODY_STATUSES = new Set([204, 205, 304]);
+
+const MAX_LOGGED_BODY = 10_000;
+const MAX_LOGS_PER_PROJECT = 500;
+
+// Never persist full credentials or cookies in the request log.
+function redactHeaders(headers: Record<string, string>): Record<string, string> {
+  const out = { ...headers };
+  for (const key of Object.keys(out)) {
+    const lower = key.toLowerCase();
+    if (lower === 'cookie' || lower === 'set-cookie') out[key] = '[redacted]';
+    else if (lower === 'authorization' && out[key].length > 10) out[key] = `${out[key].slice(0, 10)}…[redacted]`;
+  }
+  return out;
+}
+
+const clip = (text: string | null) =>
+  text && text.length > MAX_LOGGED_BODY ? `${text.slice(0, MAX_LOGGED_BODY)}… [truncated]` : text;
+
 async function handleRequest(request: Request, projectId: string, slug: string[], method: HttpMethod) {
   const path = '/' + slug.join('/');
   const startTime = Date.now();
@@ -57,22 +76,38 @@ async function handleRequest(request: Request, projectId: string, slug: string[]
     } catch { /* ignore */ }
   }
 
-  // Helper to publish a log entry once we have a status code
-  const log = (statusCode: number, responseBody: string | null, endpointId: string | null) => {
-    const entry: InspectorLogEntry = {
-      id: randomUUID(),
-      timestamp: new Date().toISOString(),
-      method,
-      path,
-      statusCode,
-      latencyMs: Date.now() - startTime,
-      requestHeaders,
-      queryParams,
-      requestBody: requestBodyText,
-      responseBody,
-      endpointId,
-    };
-    publish(projectId, entry);
+  // Persist a log entry for the Request Inspector once we have a status code.
+  // Awaited so serverless runtimes don't drop the write after the response is sent.
+  const log = async (statusCode: number, responseBody: string | null, endpointId: string | null) => {
+    try {
+      await prisma.requestLog.create({
+        data: {
+          projectId,
+          endpointId,
+          method,
+          path,
+          statusCode,
+          latencyMs: Date.now() - startTime,
+          requestHeaders: JSON.stringify(redactHeaders(requestHeaders)),
+          queryParams: JSON.stringify(queryParams),
+          requestBody: clip(requestBodyText),
+          responseBody: clip(responseBody),
+        },
+      });
+      if (Math.random() < 0.05) {
+        // Occasionally trim old rows so the table doesn't grow without bound
+        const cutoff = await prisma.requestLog.findFirst({
+          where: { projectId },
+          orderBy: { createdAt: 'desc' },
+          skip: MAX_LOGS_PER_PROJECT,
+          select: { createdAt: true },
+        });
+        if (cutoff) await prisma.requestLog.deleteMany({ where: { projectId, createdAt: { lte: cutoff.createdAt } } });
+      }
+    } catch (e) {
+      // The project may have been deleted mid-request, or logging may be unavailable; never fail the mock response
+      console.warn('Failed to store request log', e);
+    }
   };
 
   try {
@@ -87,14 +122,14 @@ async function handleRequest(request: Request, projectId: string, slug: string[]
     });
 
     if (!endpoint) {
-      log(404, null, null);
+      await log(404, null, null);
       return NextResponse.json(
         { error: 'Mock endpoint not found or inactive in this project.' },
         { status: 404 }
       );
     }
 
-    const headers = corsHeaders(endpoint.enableCors);
+    const headers = { ...parseStoredHeaders(endpoint.responseHeaders), ...corsHeaders(endpoint.enableCors) };
 
     // 2. Authentication Gate Simulation
     if (endpoint.requireAuth) {
@@ -114,7 +149,7 @@ async function handleRequest(request: Request, projectId: string, slug: string[]
 
       if (!authenticated) {
         const body = JSON.stringify({ error: 'Unauthorized. Authentication gated by Endpoint simulation.' });
-        log(401, body, endpoint.id);
+        await log(401, body, endpoint.id);
         return NextResponse.json(
           { error: 'Unauthorized. Authentication gated by Endpoint simulation.' },
           { status: 401, headers }
@@ -132,9 +167,9 @@ async function handleRequest(request: Request, projectId: string, slug: string[]
       const randomValue = Math.random();
       if (randomValue < endpoint.errorRate) {
         const errorCodes = [500, 502, 503, 504];
-        const randomErrorStatus = errorCodes[Math.floor(Math.random() * errorCodes.length)];
+        const randomErrorStatus = endpoint.errorStatusCode ?? errorCodes[Math.floor(Math.random() * errorCodes.length)];
         const body = JSON.stringify({ error: `Simulated network error (Rate: ${endpoint.errorRate * 100}%)` });
-        log(randomErrorStatus, body, endpoint.id);
+        await log(randomErrorStatus, body, endpoint.id);
         return NextResponse.json(
           { error: `Simulated network error (Rate: ${endpoint.errorRate * 100}%)` },
           { status: randomErrorStatus, headers }
@@ -163,19 +198,26 @@ async function handleRequest(request: Request, projectId: string, slug: string[]
       responseBody = processedBodyString;
     }
 
+    const status = endpoint.statusCode;
+
+    if (NO_BODY_STATUSES.has(status)) {
+      await log(status, null, endpoint.id);
+      return new NextResponse(null, { status, headers });
+    }
+
     if (isJson) {
-      log(200, JSON.stringify(responseBody), endpoint.id);
-      return NextResponse.json(responseBody, { status: 200, headers });
+      await log(status, JSON.stringify(responseBody), endpoint.id);
+      return NextResponse.json(responseBody, { status, headers });
     } else {
-      log(200, String(responseBody), endpoint.id);
+      await log(status, String(responseBody), endpoint.id);
       return new NextResponse(responseBody, {
-        status: 200,
-        headers: { ...headers, 'Content-Type': 'text/plain' },
+        status,
+        headers: { 'Content-Type': 'text/plain', ...headers },
       });
     }
   } catch (error) {
     console.error(`Mockflow Error on [${method}] /mock/${projectId}${path}:`, error);
-    log(500, null, null);
+    await log(500, null, null);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -210,7 +252,10 @@ export async function DELETE(req: Request, { params }: ParamsProps) {
 export async function OPTIONS(req: Request, { params }: ParamsProps) {
   const resolvedParams = await params;
   const path = '/' + resolvedParams.slug.join('/');
-  
+  const requestedMethod = req.headers.get('access-control-request-method');
+  // Echo the headers the browser says it will send, so custom headers pass the preflight
+  const requestedHeaders = req.headers.get('access-control-request-headers');
+
   // Try to find the endpoint to dynamically enable/disable CORS preflight
   try {
     const endpoint = await prisma.endpoint.findFirst({
@@ -218,22 +263,26 @@ export async function OPTIONS(req: Request, { params }: ParamsProps) {
         projectId: resolvedParams.projectId,
         path: path,
         active: true,
+        ...(requestedMethod ? { method: requestedMethod.toUpperCase() } : {}),
       },
     });
     
-    // If we found it, and cors is disabled, throw a small error or omit headers.
+    // If we found it, and cors is disabled, answer the preflight without CORS headers
     if (endpoint && !endpoint.enableCors) {
       return new NextResponse(null, { status: 204 }); 
     }
-  } catch(e) {}
+  } catch (e) {
+    console.warn('Preflight endpoint lookup failed', e);
+  }
   
   // Default: Allow
   return new NextResponse(null, {
-    status: 200,
+    status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': requestedHeaders || 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400',
     },
   });
 }

@@ -93,27 +93,54 @@ export function RequestInspector({ projectId }: { projectId: string }) {
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    const es = new EventSource(`/api/inspector/${projectId}`);
-    esRef.current = es;
+    let cancelled = false;
+    let es: EventSource | null = null;
 
-    es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
-
-    es.onmessage = (event) => {
-      if (pausedRef.current) return;
+    // Load stored history first, then stream new requests from where the history ends.
+    // Logs are stored server-side, so they survive reloads and the stream works across instances.
+    (async () => {
+      let since = new Date().toISOString();
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'log') {
-          setLogs(prev => [data.entry, ...prev].slice(0, 200)); // keep last 200
+        const res = await fetch(`/api/inspector/${projectId}/logs`);
+        if (res.ok) {
+          const history: InspectorLogEntry[] = await res.json();
+          if (cancelled) return;
+          setLogs(history);
+          if (history[0]) since = history[0].timestamp;
         }
-      } catch { /* ignore parse errors */ }
-    };
+      } catch { /* history is best-effort */ }
+      if (cancelled) return;
+
+      es = new EventSource(`/api/inspector/${projectId}?since=${encodeURIComponent(since)}`);
+      esRef.current = es;
+      es.onopen = () => setConnected(true);
+      es.onerror = () => setConnected(false); // EventSource reconnects on its own and resumes via Last-Event-ID
+      es.onmessage = (event) => {
+        if (pausedRef.current) return;
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'log') {
+            setLogs(prev =>
+              prev.some(l => l.id === data.entry.id) ? prev : [data.entry, ...prev].slice(0, 200) // keep last 200
+            );
+          }
+        } catch { /* ignore parse errors */ }
+      };
+    })();
 
     return () => {
-      es.close();
+      cancelled = true;
+      es?.close();
       setConnected(false);
     };
   }, [projectId]);
+
+  const handleClear = async () => {
+    setLogs([]);
+    try {
+      await fetch(`/api/inspector/${projectId}/logs`, { method: 'DELETE' });
+    } catch { /* ignore */ }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -134,7 +161,7 @@ export function RequestInspector({ projectId }: { projectId: string }) {
           <Button
             variant="ghost" size="sm"
             className="h-7 text-xs gap-1.5 text-muted-foreground"
-            onClick={() => setLogs([])}
+            onClick={handleClear}
           >
             <Trash2 className="w-3 h-3" /> Clear
           </Button>
