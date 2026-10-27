@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Zap, Sparkles, Activity, Globe } from 'lucide-react';
 import { auth } from '@/auth';
@@ -58,6 +59,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </Button>
         </form>
         <p className="text-xs text-muted-foreground mt-4">We only use your Google name, email and photo to identify your account.</p>
+        <p className="text-xs text-muted-foreground mt-2">
+          <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>
+          {' · '}
+          <Link href="/terms" className="underline hover:text-foreground">Terms of Service</Link>
+        </p>
       </div>
     </main>
   );
