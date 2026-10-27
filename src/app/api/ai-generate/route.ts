@@ -1,61 +1,35 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { unstable_cache } from 'next/cache';
 import { getOwnerId, unauthorized } from '@/lib/owner';
-
-const SYSTEM_INSTRUCTION = `You are a JSON API mock data generator.
-The user will describe what kind of API response they want.
-You MUST respond with ONLY valid JSON — no prose, no markdown code fences, no explanation.
-The output should be a realistic, detailed mock payload that exactly what a real REST API would return.
-If the user asks for a list, return a JSON array. If they ask for a single object, return a JSON object.
-Use realistic values: real-sounding names, plausible prices, real URL structures, proper UUIDs where appropriate.
-Never truncate — always provide the full requested quantity.`;
+import {
+  SYSTEM_INSTRUCTION,
+  cleanJsonText,
+  generateWithFallback,
+  getModelName,
+  isBusyError,
+  isModelUnavailableError,
+  realDeps,
+} from '@/lib/gemini';
 
 // Retries add a few seconds on top of generation time
 export const maxDuration = 60;
 
 const API_KEY_HEADER = 'x-gemini-api-key';
 
-// Google retires Gemini models over time, so the model can be changed without a code change.
-const DEFAULT_MODEL = 'gemini-3.8-flash';
-const getModelName = () => process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
-
 function isUsableKey(key: string | undefined): key is string {
   return !!key && key !== 'your_gemini_api_key_here';
 }
 
-// Google answers 503 (overloaded) and 429 (rate limited) for temporary conditions
-function isBusyError(message: string) {
-  return /\[(503|429) |high demand|overloaded|RESOURCE_EXHAUSTED/i.test(message);
-}
-
-const RETRY_DELAYS_MS = [1000, 2500];
-
 async function generateWithGemini(prompt: string, apiKey: string): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: getModelName() });
-  const input = [
-    { text: SYSTEM_INSTRUCTION },
-    { text: `Generate a mock API JSON response for: ${prompt}` },
-  ];
-
-  let result;
-  for (let attempt = 0; ; attempt++) {
-    try {
-      result = await model.generateContent(input);
-      break;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      if (!isBusyError(message) || attempt >= RETRY_DELAYS_MS.length) throw error;
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
-    }
-  }
-  const rawText = result.response.text().trim();
-  return rawText
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
+  const { text, model } = await generateWithFallback(
+    [
+      { text: SYSTEM_INSTRUCTION },
+      { text: `Generate a mock API JSON response for: ${prompt}` },
+    ],
+    realDeps(apiKey)
+  );
+  if (model !== getModelName()) console.warn(`[AI Generate] used fallback model ${model}`);
+  return cleanJsonText(text);
 }
 
 // Wrap with Next.js unstable_cache keyed by prompt so identical prompts
@@ -112,6 +86,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Your Gemini API key is not valid. Check it and try again.', code: 'INVALID_API_KEY' },
         { status: 401 }
+      );
+    }
+    if (isModelUnavailableError(errorMessage)) {
+      return NextResponse.json(
+        { error: 'The AI model is unavailable right now. Please try again later.', code: 'MODEL_UNAVAILABLE' },
+        { status: 503 }
       );
     }
     if (isBusyError(errorMessage)) {
