@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { accessibleToOwner, getOwnerId, publicProject } from '@/lib/owner';
+import { accessibleToOwner, getOwnerId, publicProject, unauthorized } from '@/lib/owner';
+import { ensureUserRow } from '@/lib/users';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,7 @@ const DESCRIPTION_MAX = 500;
 export async function GET() {
   try {
     const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
     const projects = await prisma.project.findMany({
       where: accessibleToOwner(ownerId),
       orderBy: { createdAt: 'desc' },
@@ -25,6 +27,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
     const body = await request.json().catch(() => null);
     const name = typeof body?.name === 'string' ? body.name.trim() : '';
     const description = typeof body?.description === 'string' ? body.description.trim() : '';
@@ -47,6 +50,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `A project named "${name}" already exists. Choose a different name.` }, { status: 409 });
     }
 
+    await ensureUserRow(ownerId);
     const project = await prisma.project.create({
       data: { name, description: description || null, ownerId },
     });

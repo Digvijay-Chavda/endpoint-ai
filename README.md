@@ -35,7 +35,7 @@ https://endpoint-ai.vercel.app/mock/[projectId]/your/path
 | 🏥 Healthcare      | Prototype patient record systems without real data         |
 | 🍞 Food Security   | Build food bank directory apps with instant mock endpoints |
 
-The built-in demo seed data includes all four of these social-impact domains — judges can explore them immediately.
+Every new account starts with one ready-made sample API (users, auth, latency and flaky-error examples) so you can see what the app does straight away.
 
 ---
 
@@ -101,7 +101,7 @@ When a request hits `GET /mock/[projectId]/[path]`:
 
 ## 🚀 Local Setup
 
-**Prerequisites:** Node.js 18+, PostgreSQL, [Gemini API key](https://aistudio.google.com/apikey)
+**Prerequisites:** Node.js 18+, PostgreSQL, a Google OAuth client (for sign-in, see below), optionally a [Gemini API key](https://aistudio.google.com/apikey)
 
 ```bash
 # 1. Clone and install
@@ -111,32 +111,28 @@ pnpm install
 
 # 2. Configure environment
 cp .env.example .env
-# Set DATABASE_URL and GEMINI_API_KEY in .env
+# Set DATABASE_URL, AUTH_SECRET, AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET in .env
+# (GEMINI_API_KEY is optional — users can paste their own key in the AI generator)
 
 # 3. Push database schema
 npx prisma db push
 
-# 4. (Optional) Seed with social-good demo data
-pnpm db:seed
-
-# 5. Start the dev server
+# 4. Start the dev server
 pnpm dev
 ```
 
+### Google sign-in setup
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) create an **OAuth client ID** of type *Web application* (configure the OAuth consent screen first if prompted).
+2. Add these **Authorised redirect URIs**:
+   - `http://localhost:3000/api/auth/callback/google`
+   - `https://<your-domain>/api/auth/callback/google`
+3. Put the client ID and secret in `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`.
+4. Generate a session secret and put it in `AUTH_SECRET`: `openssl rand -base64 32`
+
+The first time someone signs in they get a private workspace with one sample project. Projects are only visible to the account that created them; the `/mock/...` URLs they serve stay public so they can be shared.
+
 Open [http://localhost:3000](http://localhost:3000).
-
----
-
-## 📦 Demo Seed Data
-
-Running `pnpm db:seed` creates four social-impact demo projects:
-
-| Project                  | Domain             | Endpoints                                           |
-| ------------------------ | ------------------ | --------------------------------------------------- |
-| 🆘 Disaster Relief API   | Aid & Coordination | `/incidents`, `/shelters`, `/volunteers`            |
-| 🌿 Climate Monitor API   | Climate Tech       | `/sensors/stations`, `/emissions/trends`, `/alerts` |
-| 🏥 Open Health API       | Healthcare         | `/patients`, `/appointments`, `/medications/:id`    |
-| 🍞 Food Bank Network API | Food Security      | `/locations`, `/inventory`, `/donations`            |
 
 ---
 
@@ -144,15 +140,15 @@ Running `pnpm db:seed` creates four social-impact demo projects:
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Digvijay-Chavda/endpoint-ai)
 
-Set `DATABASE_URL` in your Vercel project settings (`GEMINI_API_KEY` is optional — users can enter their own key in the AI generator), then run:
+Set `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` in your Vercel project settings (`GEMINI_API_KEY` is optional — users can enter their own key in the AI generator), add your production redirect URI in Google Cloud (see above), then run:
 
 ```bash
 npx prisma db push
 ```
 
-> **Upgrading an existing database:** this release adds `Project.ownerId`, three `Endpoint` columns (`statusCode`, `responseHeaders`, `errorStatusCode`) and a `RequestLog` table. The changes are additive and existing rows keep working. Run `npx prisma db push` (or `npx prisma migrate deploy`) against your database **before** deploying this version, otherwise the API will error on the missing columns.
+> **Upgrading an existing database:** this release adds a `User` table, `Project.ownerId`, three `Endpoint` columns (`statusCode`, `responseHeaders`, `errorStatusCode`) and a `RequestLog` table. The changes are additive. Run `npx prisma db push` (or `npx prisma migrate deploy`) against your database **before** deploying this version, otherwise the API will error on the missing tables/columns.
 
-> **Access model:** there are no accounts. Each browser owns the projects it creates (via an `httpOnly` cookie); other browsers cannot see or change them. Projects created before this change stay visible to everyone. Mock URLs are always public.
+> **Removing the old global projects:** projects created before accounts existed have no owner and are invisible to everyone once this version is live, but their `/mock/...` URLs keep working until they are deleted. Preview with `npm run db:delete-projects`, then delete with `npm run db:delete-projects -- --yes` (add `--all` to wipe every project, including users' own). It runs against whatever `DATABASE_URL` points at.
 
 > **Note:** The Inspector stores requests in the database and streams them over SSE by polling, so it works across serverless instances. It still needs a platform that supports streaming responses; Vercel Fluid Compute supports this natively.
 

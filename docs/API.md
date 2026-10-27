@@ -5,13 +5,15 @@ Base URL (production): `https://your-deployment.com`
 
 ---
 
-## Ownership
+## Authentication and ownership
 
-There are no accounts. Each browser gets a random id in an `httpOnly` cookie (`endpoint_owner`) and every project you create is owned by it. All `/api/projects`, `/api/endpoints` and `/api/inspector` routes only list or modify projects owned by the calling browser. Anything else returns `404`.
+Sign-in is Google only (Auth.js, JWT session cookie). Every project belongs to the Google account that created it, and each new account gets one sample project on first sign-in.
 
-- Clearing cookies loses access to your projects (export them first if that matters).
-- Projects created before ownership existed (`ownerId = null`) stay visible and editable to everyone.
+- `/api/projects`, `/api/endpoints`, `/api/inspector` and `/api/ai-generate` require a session and return `401 { "code": "UNAUTHENTICATED" }` without one. Auth routes live under `/api/auth/*`.
+- Projects you do not own return `404`, exactly like projects that do not exist.
+- Names, endpoint paths and everything else are scoped per user, so two users can both have a project called "My API".
 - Mock URLs under `/mock/...` are always public, so they can be shared.
+- Projects created before accounts existed have no owner and are not visible to anyone.
 
 ---
 
@@ -19,7 +21,7 @@ There are no accounts. Each browser gets a random id in an `httpOnly` cookie (`e
 
 ### `GET /api/projects`
 
-Returns the projects visible to the caller, newest first, each with `_count.endpoints`.
+Returns the caller's projects, newest first, each with `_count.endpoints`.
 
 **Response `200`**
 
@@ -48,7 +50,7 @@ Create a new project.
 { "name": "My Project", "description": "Optional" }
 ```
 
-`name` is required (max 100 chars, unique per owner, case-insensitive). `description` max 500 chars.
+`name` is required (max 100 chars, unique per user, case-insensitive). `description` max 500 chars.
 
 **Response `201`** — returns the created project. **`409`** if the name is taken.
 

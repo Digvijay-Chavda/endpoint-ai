@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { findUniqueProjectName, getOwnerId, publicProject } from '@/lib/owner';
+import { findUniqueProjectName, getOwnerId, publicProject, unauthorized } from '@/lib/owner';
+import { ensureUserRow } from '@/lib/users';
 import { parseProjectImport } from '@/lib/project-import';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
     const body = await request.json().catch(() => null);
     if (!body || body.content === undefined) {
       return NextResponse.json({ error: 'Request body must have a "content" field.' }, { status: 400 });
@@ -20,6 +22,7 @@ export async function POST(request: Request) {
     const requested = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : parsed.name;
     const name = await findUniqueProjectName(ownerId, requested);
 
+    await ensureUserRow(ownerId);
     const project = await prisma.project.create({
       data: {
         name,

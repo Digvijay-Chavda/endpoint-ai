@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { findAccessibleProject, notFound } from '@/lib/owner';
+import { findAccessibleProject, getOwnerId, notFound, unauthorized } from '@/lib/owner';
 import { parseStoredHeaders } from '@/lib/endpoint-input';
 import { EXPORT_FORMAT } from '@/lib/project-import';
 
@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const project = await findAccessibleProject(id);
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    const project = await findAccessibleProject(id, ownerId);
     if (!project) return notFound();
 
     const endpoints = await prisma.endpoint.findMany({

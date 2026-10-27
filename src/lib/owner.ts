@@ -1,41 +1,27 @@
-import { cookies } from 'next/headers';
-import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 
 /**
- * Lightweight, login-free ownership. Each browser gets a random id in an httpOnly cookie and
- * projects are scoped to it. This keeps strangers from listing, editing or deleting your projects,
- * but it is not an account system: clearing cookies loses access, and projects cannot be shared.
- * Projects with a null ownerId were created before ownership existed and stay open to everyone.
- * Mock URLs (/mock/...) are always public so they can be shared.
+ * Projects belong to the signed-in Google user. Every API route (except the public /mock/... URLs)
+ * requires a session, and only returns or changes projects owned by that user. Projects with a null
+ * owner (from before accounts existed) match nobody, so they are invisible and unreachable.
  */
-const OWNER_COOKIE = 'endpoint_owner';
-const ONE_YEAR = 60 * 60 * 24 * 365;
+export async function getOwnerId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id ?? null;
+}
 
-export async function getOwnerId(): Promise<string> {
-  const store = await cookies();
-  const existing = store.get(OWNER_COOKIE)?.value;
-  if (existing && /^[0-9a-f-]{36}$/i.test(existing)) return existing;
-
-  const ownerId = randomUUID();
-  store.set(OWNER_COOKIE, ownerId, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: ONE_YEAR,
-  });
-  return ownerId;
+export function unauthorized() {
+  return NextResponse.json({ error: 'Sign in required', code: 'UNAUTHENTICATED' }, { status: 401 });
 }
 
 export function accessibleToOwner(ownerId: string) {
-  return { OR: [{ ownerId }, { ownerId: null }] };
+  return { ownerId };
 }
 
-/** Returns the project if the current browser may access it, otherwise null (treated as 404). */
-export async function findAccessibleProject(projectId: string) {
-  const ownerId = await getOwnerId();
+/** Returns the project if it belongs to this user, otherwise null (treated as 404). */
+export async function findAccessibleProject(projectId: string, ownerId: string) {
   return prisma.project.findFirst({
     where: { id: projectId, ...accessibleToOwner(ownerId) },
   });
@@ -58,7 +44,7 @@ export async function findUniqueProjectName(ownerId: string, desired: string): P
   }
 }
 
-/** Strips ownerId from API responses — it equals the httpOnly owner cookie value. */
+/** Strips ownerId from API responses. */
 export function publicProject<T extends { ownerId?: string | null }>(project: T): Omit<T, 'ownerId'> {
   const rest = { ...project };
   delete rest.ownerId;

@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { accessibleToOwner, getOwnerId, notFound } from '@/lib/owner';
+import { accessibleToOwner, getOwnerId, notFound, unauthorized } from '@/lib/owner';
 import { parseEndpointInput } from '@/lib/endpoint-input';
 
 export const dynamic = 'force-dynamic';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-async function findAccessibleEndpoint(id: string) {
-  const ownerId = await getOwnerId();
+async function findAccessibleEndpoint(id: string, ownerId: string) {
   return prisma.endpoint.findFirst({
     where: { id, project: accessibleToOwner(ownerId) },
   });
@@ -18,7 +17,9 @@ async function findAccessibleEndpoint(id: string) {
 export async function PATCH(request: Request, { params }: Ctx) {
   try {
     const { id } = await params;
-    if (!(await findAccessibleEndpoint(id))) return notFound('Endpoint');
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    if (!(await findAccessibleEndpoint(id, ownerId))) return notFound('Endpoint');
 
     const body = await request.json().catch(() => null);
     const parsed = parseEndpointInput(body, true);
@@ -42,7 +43,9 @@ export async function PATCH(request: Request, { params }: Ctx) {
 export async function DELETE(_request: Request, { params }: Ctx) {
   try {
     const { id } = await params;
-    if (!(await findAccessibleEndpoint(id))) return notFound('Endpoint');
+    const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
+    if (!(await findAccessibleEndpoint(id, ownerId))) return notFound('Endpoint');
 
     await prisma.endpoint.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });

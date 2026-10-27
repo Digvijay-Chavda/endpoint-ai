@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { accessibleToOwner, getOwnerId, notFound } from '@/lib/owner';
+import { accessibleToOwner, getOwnerId, notFound, unauthorized } from '@/lib/owner';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +10,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const ownerId = await getOwnerId();
+    if (!ownerId) return unauthorized();
     const source = await prisma.endpoint.findFirst({
       where: { id, project: accessibleToOwner(ownerId) },
     });

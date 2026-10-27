@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { unstable_cache } from 'next/cache';
+import { getOwnerId, unauthorized } from '@/lib/owner';
 
 const SYSTEM_INSTRUCTION = `You are a JSON API mock data generator.
 The user will describe what kind of API response they want.
@@ -47,10 +48,12 @@ function isInvalidKeyError(message: string) {
 
 // Lets the UI know whether it has to ask the user for a key.
 export async function GET() {
+  if (!(await getOwnerId())) return unauthorized();
   return NextResponse.json({ serverKeyConfigured: isUsableKey(process.env.GEMINI_API_KEY) });
 }
 
 export async function POST(request: Request) {
+  if (!(await getOwnerId())) return unauthorized();
   const headerKey = request.headers.get(API_KEY_HEADER)?.trim();
   const apiKey = isUsableKey(headerKey) ? headerKey : process.env.GEMINI_API_KEY;
   if (!isUsableKey(apiKey)) {

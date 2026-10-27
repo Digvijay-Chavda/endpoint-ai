@@ -18,7 +18,8 @@ All notable changes to Endpoint are documented here.
 
 ### 🔒 Security
 
-- **Project ownership** — each browser owns the projects it creates (httpOnly cookie); other browsers can no longer list, edit or delete them. Legacy projects remain public. Not a replacement for real accounts.
+- **Google sign-in and per-user projects** — Auth.js with Google; every project belongs to the account that created it and is invisible to others. All API routes except the public `/mock/...` URLs require a session, including the AI generator.
+- **No more global projects** — pre-accounts projects have no owner and are hidden from everyone. `npm run db:delete-projects` removes them (dry run by default). The demo seed script is removed; every new user instead gets one sample project.
 - Inspector SSE no longer sends `Access-Control-Allow-Origin: *`; logged `Authorization` values are truncated and cookies redacted
 
 ### 🐛 Fixes
@@ -31,7 +32,7 @@ All notable changes to Endpoint are documented here.
 
 ### ⚠️ Upgrade note
 
-Run `npx prisma db push` (or `prisma migrate deploy`) before deploying — the schema gains `Project.ownerId`, three `Endpoint` columns and a `RequestLog` table (all additive).
+Run `npx prisma db push` (or `prisma migrate deploy`) before deploying — the schema gains a `User` table, `Project.ownerId`, three `Endpoint` columns and a `RequestLog` table (all additive). Set `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`, and add the `/api/auth/callback/google` redirect URI in Google Cloud.
 
 ---
 

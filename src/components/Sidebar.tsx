@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { appEvents } from '@/lib/events';
-import { Zap, Folder, LayoutDashboard, Trash2, Search, FileUp } from "lucide-react";
+import { Zap, Folder, LayoutDashboard, Trash2, Search, FileUp, LogOut } from "lucide-react";
+import { signOutAction } from '@/app/actions';
 import { Project } from '@/types';
 import { DeleteProjectDialog } from '@/components/DeleteProjectDialog';
 import { ImportProjectDialog } from '@/components/ImportProjectDialog';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -22,7 +24,13 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 
-export function AppSidebar() {
+interface SidebarUser {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
+export function AppSidebar({ user }: { user: SidebarUser }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -33,6 +41,10 @@ export function AppSidebar() {
   const fetchProjects = async () => {
     try {
       const res = await fetch('/api/projects');
+      if (res.status === 401) {
+        window.location.assign('/login'); // session expired
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
@@ -153,6 +165,33 @@ export function AppSidebar() {
         project={projectToDelete}
         onOpenChange={(open) => { if (!open) setProjectToDelete(null); }}
       />
+
+      <SidebarFooter className="border-t p-3">
+        <div className="flex items-center gap-2.5">
+          {user.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.image} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-semibold">
+              {(user.name || user.email || '?').charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium truncate">{user.name || 'Signed in'}</p>
+            {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+          </div>
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              title="Sign out"
+              aria-label="Sign out"
+              className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
+      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>
