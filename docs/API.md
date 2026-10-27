@@ -172,7 +172,13 @@ Generate a realistic JSON payload from a natural language prompt using Google Ge
 
 **Responses are cached by Next.js `unstable_cache` for 1 hour** — repeated prompts are instant.
 
-**Request body**
+**API key:** send your own key in the `x-gemini-api-key` header. If the header is omitted, the server's `GEMINI_API_KEY` is used.
+
+### `GET /api/ai-generate`
+
+Returns `{ "serverKeyConfigured": true | false }` so clients know whether the user must supply a key.
+
+**`POST` request body**
 
 ```json
 { "prompt": "10 e-commerce products with title, price, imageUrl, and rating" }
@@ -188,5 +194,5 @@ Generate a realistic JSON payload from a natural language prompt using Google Ge
 | Status | Reason |
 |---|---|
 | `400` | Missing `prompt` |
-| `503` | `GEMINI_API_KEY` not configured |
+| `401` | `NO_API_KEY` (no header key and no server key) or `INVALID_API_KEY` (Gemini rejected the key) |
 | `500` | Gemini API error or invalid JSON output |

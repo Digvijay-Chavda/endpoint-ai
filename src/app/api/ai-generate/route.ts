@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { unstable_cache } from 'next/cache';
 
-const SYSTEM_INSTRUCTION = `You are a JSON API mock data generator. 
+const SYSTEM_INSTRUCTION = `You are a JSON API mock data generator.
 The user will describe what kind of API response they want.
 You MUST respond with ONLY valid JSON — no prose, no markdown code fences, no explanation.
 The output should be a realistic, detailed mock payload that exactly what a real REST API would return.
 If the user asks for a list, return a JSON array. If they ask for a single object, return a JSON object.
 Use realistic values: real-sounding names, plausible prices, real URL structures, proper UUIDs where appropriate.
 Never truncate — always provide the full requested quantity.`;
+
+const API_KEY_HEADER = 'x-gemini-api-key';
+
+function isUsableKey(key: string | undefined): key is string {
+  return !!key && key !== 'your_gemini_api_key_here';
+}
 
 async function generateWithGemini(prompt: string, apiKey: string): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -35,12 +41,22 @@ function getCachedGenerate(apiKey: string) {
   );
 }
 
+function isInvalidKeyError(message: string) {
+  return /API key not valid|API_KEY_INVALID|\[40[013] /i.test(message);
+}
+
+// Lets the UI know whether it has to ask the user for a key.
+export async function GET() {
+  return NextResponse.json({ serverKeyConfigured: isUsableKey(process.env.GEMINI_API_KEY) });
+}
+
 export async function POST(request: Request) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+  const headerKey = request.headers.get(API_KEY_HEADER)?.trim();
+  const apiKey = isUsableKey(headerKey) ? headerKey : process.env.GEMINI_API_KEY;
+  if (!isUsableKey(apiKey)) {
     return NextResponse.json(
-      { error: 'GEMINI_API_KEY is not configured. Add it to your .env file and restart the server.' },
-      { status: 503 }
+      { error: 'No Gemini API key found. Add your key in the AI generator settings.', code: 'NO_API_KEY' },
+      { status: 401 }
     );
   }
 
@@ -62,8 +78,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ result: cleaned });
   } catch (error) {
-    console.error('[AI Generate] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate payload';
+    if (isInvalidKeyError(errorMessage)) {
+      return NextResponse.json(
+        { error: 'Your Gemini API key is not valid. Check it and try again.', code: 'INVALID_API_KEY' },
+        { status: 401 }
+      );
+    }
+    console.error('[AI Generate] Error:', errorMessage);
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
