@@ -6,9 +6,10 @@ export interface Project {
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
+  _count?: { endpoints: number };
 }
 
-export type CreateProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateProjectInput = Pick<Project, 'name' | 'description'>;
 
 export interface Endpoint {
   id: string;
@@ -22,6 +23,9 @@ export interface Endpoint {
   requireAuth: boolean;
   customAuthHeader: string | null;
   enableCors: boolean;
+  statusCode: number;
+  responseHeaders: string | null; // JSON object string
+  errorStatusCode: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

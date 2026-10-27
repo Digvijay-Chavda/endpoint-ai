@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { CreateEndpointInput } from '@/types';
+import { findAccessibleProject, notFound } from '@/lib/owner';
+import { parseEndpointInput } from '@/lib/endpoint-input';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -10,6 +14,7 @@ export async function GET(request: Request) {
     if (!projectId) {
       return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
     }
+    if (!(await findAccessibleProject(projectId))) return notFound();
 
     const endpoints = await prisma.endpoint.findMany({
       where: { projectId },
@@ -24,31 +29,27 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body: CreateEndpointInput = await request.json();
-    
-    if (!body.projectId) {
+    const body = await request.json().catch(() => null);
+
+    if (!body?.projectId || typeof body.projectId !== 'string') {
       return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
     }
+    if (!(await findAccessibleProject(body.projectId))) return notFound();
 
-    // Ensure path starts with a slash
-    const normalizedPath = body.path.startsWith('/') ? body.path : `/${body.path}`;
+    const parsed = parseEndpointInput(body, false);
+    if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
     const endpoint = await prisma.endpoint.create({
       data: {
+        ...(parsed.data as Required<typeof parsed.data>),
         projectId: body.projectId,
-        path: normalizedPath,
-        method: body.method,
-        responseBody: body.responseBody,
-        latencyMs: body.latencyMs || 0,
-        errorRate: body.errorRate || 0,
-        active: body.active ?? true,
       },
     });
 
     return NextResponse.json(endpoint, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to create endpoint', error);
-    if (error.code === 'P2002') {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return NextResponse.json({ error: 'An endpoint with this exact path and method already exists in this project.' }, { status: 409 });
     }
     return NextResponse.json({ error: 'Failed to create endpoint' }, { status: 500 });

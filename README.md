@@ -49,7 +49,9 @@ The built-in demo seed data includes all four of these social-impact domains —
 | **AI Response Refinement** ⭐ | Paste existing JSON and let Gemini improve it with a follow-up prompt         |
 | **Faker.js Templates**        | Use `{{faker.person.fullName()}}` syntax for fresh data on every request      |
 | **Network Simulation**        | Per-endpoint latency (ms), error rate (%), auth enforcement, and CORS toggle  |
-| **Real-Time Inspector**       | Live SSE feed of every incoming request with headers, params, and body        |
+| **Real-Time Inspector**       | Live SSE feed plus stored history of every request with headers, params, and body |
+| **Project Management**        | Rename, delete, search, export, and import (Endpoint JSON, OpenAPI, Postman) projects |
+| **Response Shaping**          | Per-endpoint status code, custom response headers, and custom error status    |
 | **Postman Export** ⭐         | Download a Postman v2.1 collection for all endpoints in a project             |
 
 > ⭐ = added in the Quantum Sprint update
@@ -77,7 +79,7 @@ When a request hits `GET /mock/[projectId]/[path]`:
 4. **Latency** — Delays the response by the configured `latencyMs`
 5. **Error Simulation** — Randomly returns a 5xx error at the configured error rate
 6. **Faker Processing** — Interpolates any `{{faker.*}}` template tokens
-7. **Inspector Publish** — Emits the request log to the SSE bus
+7. **Inspector Log** — Stores the request log in the database for the Inspector
 8. **Response** — Returns the JSON payload
 
 ---
@@ -142,13 +144,17 @@ Running `pnpm db:seed` creates four social-impact demo projects:
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Digvijay-Chavda/endpoint-ai)
 
-Set `DATABASE_URL` and `GEMINI_API_KEY` in your Vercel project settings, then run:
+Set `DATABASE_URL` in your Vercel project settings (`GEMINI_API_KEY` is optional — users can enter their own key in the AI generator), then run:
 
 ```bash
 npx prisma db push
 ```
 
-> **Note:** The SSE-based Inspector requires a platform that supports streaming responses. Vercel Fluid Compute supports this natively.
+> **Upgrading an existing database:** this release adds `Project.ownerId`, three `Endpoint` columns (`statusCode`, `responseHeaders`, `errorStatusCode`) and a `RequestLog` table. The changes are additive and existing rows keep working. Run `npx prisma db push` (or `npx prisma migrate deploy`) against your database **before** deploying this version, otherwise the API will error on the missing columns.
+
+> **Access model:** there are no accounts. Each browser owns the projects it creates (via an `httpOnly` cookie); other browsers cannot see or change them. Projects created before this change stay visible to everyone. Mock URLs are always public.
+
+> **Note:** The Inspector stores requests in the database and streams them over SSE by polling, so it works across serverless instances. It still needs a platform that supports streaming responses; Vercel Fluid Compute supports this natively.
 
 --
 

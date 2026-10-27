@@ -61,6 +61,7 @@ export default function LandingPage() {
     newProjectName,
     setNewProjectName,
     creatingProject,
+    createError,
     handleCreateProject,
   } = useCreateProject();
 
@@ -126,6 +127,7 @@ export default function LandingPage() {
                 {creatingProject ? 'Creating…' : 'Create'}
               </Button>
             </form>
+            {createError && <p role="alert" className="text-xs text-destructive mt-2">{createError}</p>}
             <p className="text-xs text-muted-foreground mt-2">
               Or select an existing project from the sidebar ←
             </p>
@@ -241,6 +243,7 @@ export default function LandingPage() {
               Go
             </Button>
           </form>
+          {createError && <p role="alert" className="text-xs text-destructive mt-2">{createError}</p>}
         </div>
       </section>
     </div>

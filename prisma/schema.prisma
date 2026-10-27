@@ -11,9 +11,14 @@ model Project {
   id          String     @id @default(cuid())
   name        String
   description String?
+  // Anonymous browser owner (cookie id). Null = legacy project created before ownership existed.
+  ownerId     String?
   endpoints   Endpoint[]
+  logs        RequestLog[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  @@index([ownerId])
 }
 
 model Endpoint {
@@ -30,6 +35,11 @@ model Endpoint {
   customAuthHeader String? // Optional specific string, e.g. 'Bearer custom_token_123'
   enableCors       Boolean @default(true) // Should wildcard CORS headers be sent?
 
+  // Response shaping
+  statusCode       Int     @default(200)
+  responseHeaders  String? @db.Text // JSON object of extra response headers
+  errorStatusCode  Int?    // If set, simulated errors use this status instead of a random 5xx
+
   projectId    String
   project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -37,4 +47,22 @@ model Endpoint {
   updatedAt    DateTime @updatedAt
 
   @@unique([projectId, method, path])
+}
+
+model RequestLog {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  endpointId     String?
+  method         String
+  path           String
+  statusCode     Int
+  latencyMs      Int
+  requestHeaders String   @db.Text // JSON
+  queryParams    String   @db.Text // JSON
+  requestBody    String?  @db.Text
+  responseBody   String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([projectId, createdAt])
 }

@@ -7,6 +7,7 @@ import { appEvents } from '@/lib/events';
 export function useCreateProject(onSuccess?: () => void) {
   const [newProjectName, setNewProjectName] = useState('');
   const [creatingProject, setCreatingProject] = useState(false);
+  const [createError, setCreateError] = useState('');
   const router = useRouter();
 
   const handleCreateProject = async (e: React.FormEvent) => {
@@ -14,6 +15,7 @@ export function useCreateProject(onSuccess?: () => void) {
     if (!newProjectName.trim()) return;
     
     setCreatingProject(true);
+    setCreateError('');
     try {
       const res = await fetch('/api/projects', {
         method: 'POST',
@@ -35,9 +37,13 @@ export function useCreateProject(onSuccess?: () => void) {
         
         // Navigate to the new project
         router.push(`/projects/${newProj.id}`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setCreateError(data.error || 'Failed to create project');
       }
     } catch (e) {
       console.error(e);
+      setCreateError('Failed to create project');
     } finally {
       setCreatingProject(false);
     }
@@ -47,6 +53,7 @@ export function useCreateProject(onSuccess?: () => void) {
     newProjectName,
     setNewProjectName,
     creatingProject,
+    createError,
     handleCreateProject,
   };
 }

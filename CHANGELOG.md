@@ -4,6 +4,37 @@ All notable changes to Endpoint are documented here.
 
 ---
 
+## [Unreleased] — 2026-10-27
+
+### ✨ New Features
+
+- **Bring-your-own Gemini key** — the AI Payload Generator has a key panel (stored in the browser, sent as `x-gemini-api-key`) and falls back to the server `GEMINI_API_KEY`; missing/invalid keys return clear `401` errors
+- **Delete project** — trash action in the sidebar and project header with a confirmation dialog
+- **Edit project** — rename and add a description
+- **Export / import projects** — export as Endpoint JSON; import Endpoint JSON, OpenAPI 3/Swagger 2 and Postman v2.x files
+- **Duplicate endpoint**, **search** for projects (sidebar) and endpoints (project page)
+- **Response shaping** — per-endpoint success status code, custom response headers and custom error status
+- **Persistent Request Inspector** — requests are stored in the database (last 500 per project), history loads on open, "Clear" persists, and the live stream works across serverless instances
+
+### 🔒 Security
+
+- **Project ownership** — each browser owns the projects it creates (httpOnly cookie); other browsers can no longer list, edit or delete them. Legacy projects remain public. Not a replacement for real accounts.
+- Inspector SSE no longer sends `Access-Control-Allow-Origin: *`; logged `Authorization` values are truncated and cookies redacted
+
+### 🐛 Fixes
+
+- New endpoints now save `requireAuth`, `customAuthHeader` and `enableCors` (previously dropped on create)
+- Endpoint create/update validate input; `PATCH` ignores unknown fields such as `projectId` and returns `409` on a duplicate method + path
+- Duplicate project names are rejected (case-insensitive)
+- Unknown project URLs show a "Project not found" page instead of a perpetual spinner (`GET /api/projects/[id]` added)
+- CORS preflight echoes `Access-Control-Request-Headers` so custom request headers work
+
+### ⚠️ Upgrade note
+
+Run `npx prisma db push` (or `prisma migrate deploy`) before deploying — the schema gains `Project.ownerId`, three `Endpoint` columns and a `RequestLog` table (all additive).
+
+---
+
 ## [Quantum Sprint Update] — 2026-03-30
 
 

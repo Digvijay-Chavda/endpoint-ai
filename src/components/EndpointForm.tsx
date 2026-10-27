@@ -11,6 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AIGenerateModal } from "@/components/AIGenerateModal";
 
+function formatHeaders(raw: string | null | undefined) {
+  if (!raw) return '';
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
+
 export default function EndpointForm({
   projectId,
   onCreated,
@@ -30,6 +39,9 @@ export default function EndpointForm({
   const [requireAuth, setRequireAuth] = useState(false);
   const [customAuthHeader, setCustomAuthHeader] = useState('');
   const [enableCors, setEnableCors] = useState(true);
+  const [statusCode, setStatusCode] = useState(200);
+  const [errorStatusCode, setErrorStatusCode] = useState('');
+  const [headersText, setHeadersText] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [aiModalOpen, setAiModalOpen] = useState(false);
@@ -40,10 +52,13 @@ export default function EndpointForm({
       setMethod(editingEndpoint.method);
       setResponseBody(editingEndpoint.responseBody);
       setLatencyMs(editingEndpoint.latencyMs);
-      setErrorRate(editingEndpoint.errorRate * 100);
+      setErrorRate(Math.round(editingEndpoint.errorRate * 100));
       setRequireAuth(editingEndpoint.requireAuth || false);
       setCustomAuthHeader(editingEndpoint.customAuthHeader || '');
       setEnableCors(editingEndpoint.enableCors ?? true);
+      setStatusCode(editingEndpoint.statusCode ?? 200);
+      setErrorStatusCode(editingEndpoint.errorStatusCode ? String(editingEndpoint.errorStatusCode) : '');
+      setHeadersText(formatHeaders(editingEndpoint.responseHeaders));
     } else {
       setPath('/api/test');
       setMethod('GET');
@@ -53,6 +68,9 @@ export default function EndpointForm({
       setRequireAuth(false);
       setCustomAuthHeader('');
       setEnableCors(true);
+      setStatusCode(200);
+      setErrorStatusCode('');
+      setHeadersText('');
     }
   }, [editingEndpoint]);
 
@@ -83,6 +101,9 @@ export default function EndpointForm({
           requireAuth,
           customAuthHeader,
           enableCors,
+          statusCode,
+          errorStatusCode: errorStatusCode.trim() ? Number(errorStatusCode) : null,
+          responseHeaders: headersText.trim() ? headersText : null,
         }),
       });
 
@@ -98,6 +119,9 @@ export default function EndpointForm({
       setRequireAuth(false);
       setCustomAuthHeader('');
       setEnableCors(true);
+      setStatusCode(200);
+      setErrorStatusCode('');
+      setHeadersText('');
       onCreated();
       if (onCancelEdit) onCancelEdit();
     } catch (err: any) {
@@ -213,8 +237,54 @@ export default function EndpointForm({
         </div>
       </div>
 
+      <div className="flex gap-4 p-4 rounded-xl border bg-muted/20">
+        <div className="flex-1 space-y-2">
+          <Label htmlFor="statusCode" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Success Status
+          </Label>
+          <Input
+            id="statusCode"
+            type="number"
+            min="200"
+            max="599"
+            value={statusCode}
+            onChange={e => setStatusCode(Number(e.target.value))}
+            className="font-mono text-sm bg-card"
+          />
+        </div>
+        <div className="flex-1 space-y-2">
+          <Label htmlFor="errorStatusCode" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Error Status
+          </Label>
+          <Input
+            id="errorStatusCode"
+            type="number"
+            min="400"
+            max="599"
+            placeholder="random 5xx"
+            value={errorStatusCode}
+            onChange={e => setErrorStatusCode(e.target.value)}
+            className="font-mono text-sm bg-card"
+          />
+        </div>
+      </div>
+
       <div className="border-t pt-6 space-y-5">
         <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">Advanced Simulation</h4>
+
+        <div className="space-y-2">
+          <Label htmlFor="responseHeaders">Custom Response Headers</Label>
+          <Textarea
+            id="responseHeaders"
+            value={headersText}
+            onChange={e => setHeadersText(e.target.value)}
+            placeholder={'{\n  "X-Total-Count": "42"\n}'}
+            rows={3}
+            spellCheck={false}
+            className="font-mono text-xs resize-y bg-card"
+          />
+          <p className="text-[11px] text-muted-foreground">Optional JSON object, e.g. pagination or rate-limit headers.</p>
+        </div>
 
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">

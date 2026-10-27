@@ -1,7 +1,7 @@
 'use client';
 
 import { Endpoint } from '@/types';
-import { Copy, Trash2, ExternalLink, Activity, Pencil } from 'lucide-react';
+import { Copy, Trash2, ExternalLink, Activity, Pencil, CopyPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -21,20 +21,41 @@ export default function EndpointList({
 }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this endpoint?')) return;
-    await fetch(`/api/endpoints/${id}`, { method: 'DELETE' });
+  const [actionError, setActionError] = useState('');
+
+  // Runs a request, refreshes the list, and surfaces failures instead of silently ignoring them
+  const run = async (request: () => Promise<Response>, fallback: string) => {
+    setActionError('');
+    try {
+      const res = await request();
+      if (!res.ok && res.status !== 404) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || fallback);
+      }
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : fallback);
+    }
     onRefresh();
   };
 
-  const handleToggleActive = async (id: string, currentStatus: boolean) => {
-    await fetch(`/api/endpoints/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: !currentStatus }),
-    });
-    onRefresh();
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this endpoint?')) return;
+    await run(() => fetch(`/api/endpoints/${id}`, { method: 'DELETE' }), 'Failed to delete endpoint');
   };
+
+  const handleDuplicate = (id: string) =>
+    run(() => fetch(`/api/endpoints/${id}/duplicate`, { method: 'POST' }), 'Failed to duplicate endpoint');
+
+  const handleToggleActive = (id: string, currentStatus: boolean) =>
+    run(
+      () =>
+        fetch(`/api/endpoints/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: !currentStatus }),
+        }),
+      'Failed to update endpoint'
+    );
 
   const copyUrl = (path: string, id: string) => {
     const fullUrl = `${window.location.origin}/mock/${projectId}${path}`;
@@ -66,6 +87,9 @@ export default function EndpointList({
 
   return (
     <div className="flex flex-col gap-4">
+      {actionError && (
+        <p role="alert" className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{actionError}</p>
+      )}
       {endpoints.map((ep) => (
         <Card key={ep.id} className="relative overflow-hidden">
           {/* Status Indicator Bar */}
@@ -83,12 +107,18 @@ export default function EndpointList({
               </div>
               
               <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
+                {ep.statusCode !== 200 && (
+                  <>
+                    <Badge variant="secondary" className="font-mono text-xs">{ep.statusCode}</Badge>
+                    <span>•</span>
+                  </>
+                )}
                 <span className="flex items-center gap-1">
                   Delay: {ep.latencyMs}ms
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
-                  Error Rate: {ep.errorRate * 100}%
+                  Error Rate: {Math.round(ep.errorRate * 100)}%
                 </span>
                 <span>•</span>
                 <div className="flex items-center gap-2">
@@ -126,6 +156,14 @@ export default function EndpointList({
                 title="Edit Endpoint"
               >
                 <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => handleDuplicate(ep.id)}
+                title="Duplicate Endpoint"
+              >
+                <CopyPlus className="w-4 h-4" />
               </Button>
               <Button 
                 variant="destructive"
